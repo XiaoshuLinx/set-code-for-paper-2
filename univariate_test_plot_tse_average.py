@@ -14,7 +14,7 @@ from mne.stats import permutation_cluster_1samp_test
 
 # ---------------- PARAMETERS ----------------
 typea='sensor'
-freq = "alpha"
+freq = "alpha"#epoch
 save_dir = "/nashome2/linx/Desktop/mindeye/figures"
 subject_list = [
 '01','02','04','05','06','07','08','09','10',
@@ -24,10 +24,8 @@ subject_list = [
 '40','41','42','43','44','45','46'
 ]
 
-if typea=='sensor': 
-    data_dir = f"/nashome2/linx/Desktop/mindeye/ml_data/{typea}/grad"
-elif typea=='source':
-    data_dir = f"/nashome2/linx/Desktop/mindeye/ml_data/{typea}/nobaseline"
+data_dir = f"/nashome2/linx/Desktop/mindeye/ml_data/{typea}/grad"
+
 smooth_sigma = 2
 cluster_alpha = 0.05
 t_keeps=376
@@ -86,7 +84,7 @@ diff_subj = feature_s - object_s
 diff_mean = diff_subj.mean(axis=0)
 diff_sem = sem(diff_subj, axis=0)
 
-# ---------------- CLUSTER TEST ----------------
+# ---------------- CLUSTER TEST in full time----------------
 
 T_obs, clusters, p_vals, _ = permutation_cluster_1samp_test(
     diff_subj,
@@ -100,6 +98,38 @@ sig_mask = np.zeros(n_times)
 for c,p in zip(clusters,p_vals):
     if p < cluster_alpha:
         sig_mask[c] = 1
+        
+# ---------------- CLUSTER TEST: encoding vs baseline ----------------
+
+# define time windows
+baseline_mask = (times >= -1500) & (times <= -1000)
+encoding_mask = (times > -1000) & (times <= 0)
+
+# compute baseline mean per subject
+baseline_mean = diff_subj[:, baseline_mask].mean(axis=1, keepdims=True)
+
+# baseline-corrected difference (each subject)
+diff_bc = diff_subj - baseline_mean  # shape: (n_subj, n_times)
+
+# only test in encoding window
+diff_bc_encoding = diff_bc[:, encoding_mask]
+
+# cluster test
+T_obs_enc, clusters_enc, p_vals_enc, _ = permutation_cluster_1samp_test(
+    diff_bc_encoding,
+    n_permutations=1000,
+    tail=0,
+    out_type="mask"
+)
+
+# create full-length mask (same length as times)
+sig_mask_enc = np.zeros(n_times)
+
+for c, p in zip(clusters_enc, p_vals_enc):
+    if p < cluster_alpha:
+        # map back to full time indices
+        sig_mask_enc[np.where(encoding_mask)[0][c]] = 1
+
 # ---------------- PLOT ----------------
 
 fig, axes = plt.subplots(
@@ -130,26 +160,48 @@ ax.legend(fontsize=10, frameon=False)
 
 # -------- Panel B: Difference & Cluster --------
 ax = axes[1]
+
 min_sem = 1e-24
 diff_sem_plot = np.maximum(diff_sem, min_sem)
+
 ax.plot(times, diff_mean, color="black")
 ax.fill_between(times,
                 diff_mean-diff_sem_plot,
                 diff_mean+diff_sem_plot,
                 color="black", alpha=0.2)
+
 ax.axhline(0, color="gray", linestyle="--")
 
-# Cluster significance bar
-cluster_height = 0.15 * (ax.get_ylim()[1] - ax.get_ylim()[0])
+ymin, ymax = ax.get_ylim()
+cluster_height = 0.15 * (ymax - ymin)
+
+# -------- Full time vs 0 (yellow) --------
 ax.fill_between(times,
-                ax.get_ylim()[0],
-                ax.get_ylim()[0]+cluster_height,
+                ymin,
+                ymin + cluster_height,
                 where=sig_mask.astype(bool),
-                color="black")
+                color="yellow",
+                label="full time vs 0 ")
+
+# -------- Encoding vs baseline (green) --------
+ax.fill_between(times,
+                ymin + cluster_height,
+                ymin + 2*cluster_height,
+                where=sig_mask_enc.astype(bool),
+                color="green",
+                label="encoding vs early prepartory")
 
 ax.set_xlabel("Time (ms)", fontsize=12)
 ax.set_ylabel("Feature − Object", fontsize=12)
 ax.tick_params(axis='both', labelsize=10)
+
+ax.legend(
+    loc="lower left",
+    frameon=False,
+    fontsize=9
+)
+
+
 
 # Style tweaks
 for ax in axes:

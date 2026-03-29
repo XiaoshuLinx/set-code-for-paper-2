@@ -4,11 +4,6 @@
 Created on Wed Mar 25 15:05:05 2026
 
 @author: linx
-"""
-
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
 Butterfly plot with RMS and mean, spatiotemporal clusters
 """
 
@@ -107,15 +102,10 @@ def plot_evoked_butterfly(evoked, ax, title, show_rms=True):
     # butterfly plot
     evoked.plot(picks='grad', axes=ax, show=False, spatial_colors=True, gfp=True)
 
-    # RMS (可选)
+    # RMS 
     if show_rms:
         rms = np.sqrt(np.mean(evoked.data**2, axis=0))
         ax.plot(times, rms, color='blue', linewidth=1.5)
-
-    # mean line（保留）
-    mean_data = evoked.data.mean(axis=0)
-    scale_factor = np.max(np.abs(evoked.data)) / np.max(np.abs(mean_data))
-    ax.plot(times, mean_data * scale_factor, color='black', linewidth=2.5)
 
     # clusters
     for c, p in zip(clusters, p_vals):
@@ -126,7 +116,7 @@ def plot_evoked_butterfly(evoked, ax, title, show_rms=True):
 
     ax.set_title(title, fontsize=16, y=1)
 
-    # 只保留左+下边框
+    # keep left down frame
     ax.spines['left'].set_visible(True)
     ax.spines['bottom'].set_visible(True)
     ax.spines['top'].set_visible(False)
