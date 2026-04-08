@@ -100,7 +100,7 @@ fig, axes = plt.subplots(3, 1, figsize=(10, 6),
 
 def plot_evoked_butterfly(evoked, ax, title, show_rms=True):
     # butterfly plot
-    evoked.plot(picks='grad', axes=ax, show=False, spatial_colors=True, gfp=True)
+    evoked.plot(picks='grad', axes=ax, show=False, spatial_colors=True, gfp=True,scalings=dict(grad=1))
 
     # RMS 
     if show_rms:
