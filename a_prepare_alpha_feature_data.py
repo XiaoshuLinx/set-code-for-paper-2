@@ -79,7 +79,6 @@ for subject_num in range(1, 47):
 
     # Match indices between picked events and all events (find closest match)
     picked_indices = [np.where(all_event_samples == samp)[0][0] for samp in picked_event_samples]
-    epochs = mne.Epochs.subtract_evoked(epochs, evoked=None)
 
     for band_name, (freqs, n_cycles) in bands.items():
         print(f"Running {band_name} band: {freqs[0]}–{freqs[-1]} Hz")
